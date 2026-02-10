@@ -331,14 +331,14 @@ function initSmoothScroll() {
 
 /**
  * Form Handling
- * Handles contact form submission
+ * Handles contact form submission with Formspree integration
  */
 function initFormHandling() {
     const form = document.getElementById('contactForm');
     
     if (!form) return;
     
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         // Get form data
@@ -351,31 +351,66 @@ function initFormHandling() {
             return;
         }
         
-        // Simulate form submission
+        // Validate email format
+        if (!isValidEmail(data.email)) {
+            showNotification('Please enter a valid email address', 'error');
+            return;
+        }
+        
+        // Get submit button and show loading state
         const submitBtn = form.querySelector('.submit-btn');
         const originalText = submitBtn.innerHTML;
         
         submitBtn.innerHTML = '<span>Sending...</span> <i class="fas fa-spinner fa-spin"></i>';
         submitBtn.disabled = true;
         
-        // Simulate API call
-        setTimeout(() => {
-            showNotification('Message sent successfully!', 'success');
-            form.reset();
+        try {
+            // Submit to Formspree
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                showNotification('Message sent successfully! I\'ll get back to you soon.', 'success');
+                form.reset();
+            } else {
+                const errorData = await response.json();
+                if (errorData.errors) {
+                    showNotification(errorData.errors.map(e => e.message).join(', '), 'error');
+                } else {
+                    showNotification('Failed to send message. Please try again.', 'error');
+                }
+            }
+        } catch (error) {
+            console.error('Form submission error:', error);
+            showNotification('Failed to send message. Please check your connection and try again.', 'error');
+        } finally {
             submitBtn.innerHTML = originalText;
             submitBtn.disabled = false;
-        }, 2000);
+        }
     });
+}
+
+/**
+ * Validate email format
+ */
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 }
 
 /**
  * Form Validation
  */
 function validateForm(data) {
-    return data.name.trim() !== '' && 
-           data.email.trim() !== '' && 
-           data.subject.trim() !== '' && 
-           data.message.trim() !== '';
+    return data.name && data.name.trim() !== '' && 
+           data.email && data.email.trim() !== '' && 
+           data.subject && data.subject.trim() !== '' && 
+           data.message && data.message.trim() !== '';
 }
 
 /**
